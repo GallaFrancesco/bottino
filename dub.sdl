@@ -1,0 +1,6 @@
+name "bottino"
+description "Another bottino"
+authors "brasello"
+copyright "Copyright © 2020, brasello"
+license "GPLv3"
+dependency "ae" version="~>0.0.2609"
