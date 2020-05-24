@@ -56,9 +56,6 @@ struct IrcClient {
                    (IrcTCP tcp) => text = tcp.readText(),
                    (IrcTLS tls) => text = tls.readText());
 
-        debug {
-            logWarn(text);
-        }
         return text;
     }
 }
@@ -103,27 +100,29 @@ struct Irc(ST)
         if(!realname.startsWith(":"))
             realname = ":" ~ realname;
         send("USER", nick, "*", "*", realname);
+        logInfo("Connected to " ~ server ~ " as: " ~ nick ~ realname);
 
         debug logWarn(readText());
 
-        logInfo("Connected to " ~ server ~ " as: " ~ nick ~ realname);
     }
 
+    // send a command to the server
     void send(string cmd, string[] params...)
     {
         assert(stream, "Cannot send on uninitialized stream");
         stream.write(command(cmd,params));
     }
 
+    // readText should probably become read line to process commands
     string readText() @trusted
     {
         assert(stream, "Cannot read from uninitialized stream");
+        ubyte[] buf;
         while(!stream.empty) {
             auto b = stream.readLine();
             logInfo(cast(string)b);
             // TODO process command here...
             buf ~= b;
-            debug logWarn(to!string(stream.empty));
         }
         return cast(string)buf;
     }

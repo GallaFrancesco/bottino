@@ -52,5 +52,6 @@ void main(string[] args)
     // initialize IRC client & connect to server
     IrcClient irc = createIrcClient(server, port, password, tls);
     irc.connect(config.nick, config.realname);
-    irc.send("JOIN", "#anabbot");
+    // irc.send("JOIN", "#anabbot"); // example
+    // import std.stdio; writeln(irc.readText(...)); // example
 }
