@@ -3,6 +3,8 @@ module bottino.irc;
 import vibe.core.log;
 import vibe.core.net;
 import vibe.stream.tls;
+import vibe.core.task;
+import vibe.core.core;
 import vibe.stream.operations;
 import sumtype;
 
@@ -38,25 +40,47 @@ struct IrcClient {
     void connect(string nick, string realname) @safe
     {
         proto.match!(
-                   (IrcTCP tcp) => tcp.connect(nick, realname),
-                   (IrcTLS tls) => tls.connect(nick, realname));
+                   (ref IrcTCP tcp) => tcp.connect(nick, realname),
+                   (ref IrcTLS tls) => tls.connect(nick, realname));
     }
 
     void send(string cmd, string[] params ...) @safe
     {
         proto.match!(
-                   (IrcTCP tcp) => tcp.send(cmd, params),
-                   (IrcTLS tls) => tls.send(cmd, params));
+                   (ref IrcTCP tcp) => tcp.send(cmd, params),
+                   (ref IrcTLS tls) => tls.send(cmd, params));
     }
 
-    string readText() @safe
+    string front() @safe
     {
         string text;
         proto.match!(
-                   (IrcTCP tcp) => text = tcp.readText(),
-                   (IrcTLS tls) => text = tls.readText());
+                   (ref IrcTCP tcp) => text = tcp.front(),
+                   (ref IrcTLS tls) => text = tls.front());
 
         return text;
+    }
+
+    bool empty() @safe
+    {
+        return proto.match!(
+                   (ref IrcTCP tcp) => tcp.empty(),
+                   (ref IrcTLS tls) => tls.empty());
+    }
+
+    // handler for asynchronous server buffer processing
+    Task processAsync(void delegate(string) @safe nothrow handleReply) @safe
+    {
+        debug logInfo("Processing the server buffer asynchronously");
+
+        auto task = runTask(() @safe {
+                while(!empty()) {
+                    string line = front();
+                    handleReply(line);
+                }
+            });
+
+        return task;
     }
 }
 
@@ -64,13 +88,20 @@ struct IrcClient {
 
 alias IrcTCP = Irc!TCPConnection;
 alias IrcTLS = Irc!TLSStream;
-alias _IrcClient = SumType!(IrcTCP,IrcTLS);
+private alias _IrcClient = SumType!(IrcTCP,IrcTLS);
 
 /* ----------------------------------------------------------------------- */
 
-struct Irc(ST)
+private struct Irc(ST)
 {
+    static assert(is(ST == TLSStream) || is(ST == TCPConnection),
+                  "Irc accepts only TCP or TLS protocols");
+
     private {
+        static if(is(ST == TLSStream)) {
+            TCPConnection conn;
+            TLSContext ctx;
+        }
         ST stream;
     }
 
@@ -85,6 +116,7 @@ struct Irc(ST)
         password = pwd;
     }
 
+    // initialize TCP/TLS context and connect
     void connect(string nick, string realname) @safe
     {
         assert(!server.empty, "Cannot initialize IRC client without a server.");
@@ -95,16 +127,15 @@ struct Irc(ST)
         if(!password.empty) {
             send("PASS", password);
         }
-
         send("NICK", nick);
-        if(!realname.startsWith(":"))
+        if(!realname.startsWith(":")) {
             realname = ":" ~ realname;
+        }
         send("USER", nick, "*", "*", realname);
+
         logInfo("Connected to " ~ server ~ " as: " ~ nick ~ realname);
-
-        debug logWarn(readText());
-
     }
+
 
     // send a command to the server
     void send(string cmd, string[] params...)
@@ -113,32 +144,43 @@ struct Irc(ST)
         stream.write(command(cmd,params));
     }
 
-    // readText should probably become read line to process commands
-    string readText() @trusted
+    /* ------------------------------------------------------------- */
+    /* Range-like IRC buffer interface                               */
+    /* ------------------------------------------------------------- */
+
+    string front() @trusted
     {
         assert(stream, "Cannot read from uninitialized stream");
         ubyte[] buf;
-        while(!stream.empty) {
-            auto b = stream.readLine();
-            logInfo(cast(string)b);
-            // TODO process command here...
-            buf ~= b;
-        }
+        if(!empty) buf = stream.readLine();
         return cast(string)buf;
     }
+
+    bool empty() @safe
+    {
+        assert(stream, "Cannot read from uninitialized stream");
+        return stream.empty;
+    }
+
+    void popFront() @safe {} // bogus: front already pops
+
+    /* ------------------------------------------------------------- */
+    /* Utilities                                                     */
+    /* ------------------------------------------------------------- */
 
     // initialize TCP or TLS connection
     private void initialize() @safe
     {
         static if(is(ST == TLSStream)) {
-            auto conn = connectTCP(server, port);
-            auto sslctx = createTLSContext(TLSContextKind.client);
-            sslctx.peerValidationMode = TLSPeerValidationMode.checkTrust;
-            stream = createTLSStream(conn, sslctx);
-            assert(stream, "Unable to create stream.");
+            conn = connectTCP(server, port);
+            ctx = createTLSContext(TLSContextKind.client);
+            ctx.peerValidationMode = TLSPeerValidationMode.checkTrust;
+            stream = createTLSStream(conn, ctx);
         } else static if(is(ST == TCPConnection)) {
             stream = connectTCP(server, port);
         }
+
+        assert(stream, "Unable to create stream.");
     }
 
     // build a IRC command

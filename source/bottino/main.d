@@ -2,6 +2,9 @@ module bottino.main;
 import bottino.irc;
 
 import vibe.core.net;
+import vibe.core.log;
+import vibe.core.task;
+import vibe.core.core;
 import vibe.stream.tls;
 import sumtype;
 
@@ -52,6 +55,9 @@ void main(string[] args)
     // initialize IRC client & connect to server
     IrcClient irc = createIrcClient(server, port, password, tls);
     irc.connect(config.nick, config.realname);
+    auto task = irc.processAsync((string s) @safe {logWarn(s); });
+
+    task.join();
     // irc.send("JOIN", "#anabbot"); // example
     // import std.stdio; writeln(irc.readText(...)); // example
 }
