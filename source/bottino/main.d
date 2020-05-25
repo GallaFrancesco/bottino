@@ -1,10 +1,13 @@
 module bottino.main;
 import bottino.irc;
+import bottino.bots.common;
+import bottino.bots.logger;
 
 import vibe.core.net;
 import vibe.core.log;
 import vibe.core.task;
 import vibe.core.core;
+import vibe.core.concurrency;
 import vibe.stream.tls;
 import sumtype;
 
@@ -12,29 +15,15 @@ import std.stdio;
 import std.string;
 import std.getopt;
 
-struct BotConfig {
-public:
-    string nick;
-    string realname = "bottino";
-    string[] channels;
-
-    void addChannel(immutable string ch) @safe
-    {
-        assert(!ch.empty, "Empty channel name provided.");
-
-        if (ch.startsWith("#")) channels ~= '#' ~ ch;
-        else channels ~= ch;
-    }
-}
-
 void main(string[] args)
 {
-    BotConfig config;
     bool tls = false;
     string server;
     string password = "";
     ushort port = 6667;
-
+    string nick;
+    string realname;
+    string[] channels;
 
     auto helpInformation = getopt(
                                   args,
@@ -42,9 +31,9 @@ void main(string[] args)
                                   "port|p", "Server port [6667]", &port,
                                   "password|k", "Server password [empty]", &password,
                                   "tls|t", "Use TLS (requires a SSL provider)", &tls,
-                                  "nick|n", "Bot nick", &config.nick,
-                                  "realname|r", "Bot realname [bottino]", &config.realname,
-                                  "channel|c", "Add a channel (might be specified more than once)", &config.channels);
+                                  "nick|n", "Bot nick", &nick,
+                                  "realname|r", "Bot realname [bottino]", &realname,
+                                  "channel|c", "Add a channel (might be specified more than once)", &channels);
 
     if(helpInformation.helpWanted) {
         defaultGetoptPrinter("Bottino: IRC bot",
@@ -52,12 +41,14 @@ void main(string[] args)
         return;
     }
 
+    immutable config = BotConfig(nick, realname, channels);
+
     // initialize IRC client & connect to server
     IrcClient irc = createIrcClient(server, port, password, tls);
     irc.connect(config.nick, config.realname);
-    auto task = irc.processAsync((string s) @safe {logWarn(s); });
 
-    task.join();
-    // irc.send("JOIN", "#anabbot"); // example
-    // import std.stdio; writeln(irc.readText(...)); // example
+    auto loggerBot = createLoggerBot(config.nick, config, "./logs");
+    irc.registerBot(loggerBot.name, loggerBot);
+
+    irc.serveBots();
 }

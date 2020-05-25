@@ -1,5 +1,7 @@
 module bottino.irc;
 
+import bottino.bots.common;
+
 import vibe.core.log;
 import vibe.core.net;
 import vibe.stream.tls;
@@ -20,22 +22,19 @@ IrcClient createIrcClient(immutable string server,
                           bool tls = false) @trusted
 {
     IrcClient irc;
-    _IrcClient proto;
 
-    if(tls) proto = IrcTLS(server, port, password);
-    else proto = IrcTCP(server, port, password);
+    if(tls) irc.proto = IrcTLS(server, port, password);
+    else irc.proto = IrcTCP(server, port, password);
 
-    move(proto, irc.proto);
     return irc;
 }
 
 /* ----------------------------------------------------------------------- */
 
-/**
- * Wrapper around a IRC!proto connection
- */
-struct IrcClient {
+struct IrcClient
+{
     _IrcClient proto;
+    Bot[] bots;
 
     void connect(string nick, string realname) @safe
     {
@@ -68,26 +67,28 @@ struct IrcClient {
                    (ref IrcTLS tls) => tls.empty());
     }
 
-    // handler for asynchronous server buffer processing
-    Task processAsync(void delegate(string) @safe nothrow handleReply) @safe
+    void registerBot(immutable string name, Bot bot) @safe
     {
-        debug logInfo("Processing the server buffer asynchronously");
+        debug logInfo("[BOT] Registering bot: "~bot.name);
+        bots ~= bot;
+    }
 
-        auto task = runTask(() @safe {
-                while(!empty()) {
-                    string line = front();
-                    handleReply(line);
-                }
-            });
-
-        return task;
+    // handler for asynchronous server buffer processing
+    void serveBots() @safe
+    {
+        while(!empty()) {
+            string line = front();
+            foreach(bot; bots) {
+                bot.notify(line);
+            }
+        }
     }
 }
 
 /* ----------------------------------------------------------------------- */
 
-alias IrcTCP = Irc!TCPConnection;
-alias IrcTLS = Irc!TLSStream;
+private alias IrcTCP = Irc!TCPConnection;
+private alias IrcTLS = Irc!TLSStream;
 private alias _IrcClient = SumType!(IrcTCP,IrcTLS);
 
 /* ----------------------------------------------------------------------- */
@@ -151,9 +152,9 @@ private struct Irc(ST)
     string front() @trusted
     {
         assert(stream, "Cannot read from uninitialized stream");
-        ubyte[] buf;
-        if(!empty) buf = stream.readLine();
-        return cast(string)buf;
+        string buf;
+        if(!empty) buf = cast(string)stream.readLine();
+        return buf;
     }
 
     bool empty() @safe
