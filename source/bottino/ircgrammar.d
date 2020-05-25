@@ -96,3 +96,44 @@ struct IRCCommand
         pt.children.each!((const ref PT p) => traverse(p));
     }
 }
+
+
+/* ------------------------------------------------------------- */
+/* IRC PING                                                      */
+/* ------------------------------------------------------------- */
+
+mixin(grammar(`
+IRCPing:
+   Line     <- "PING" space* Message
+   Message  <- (space / Char)*
+   Char     <- .
+`));
+
+// for now we only need to know if a line is a reply or not
+string tryPong(immutable string line) @trusted nothrow
+{
+    void traverse(PT)(const ref PT pt, ref string pong) @safe nothrow
+    {
+        if(pt.name == "IRCPing.Message") {
+            pong = "PONG :"~pt.matches.join();
+            return;
+        }
+        
+        else pt.children.each!((const ref PT p) => traverse(p,pong));
+    }
+
+    ParseTree pt;
+    string pong;
+    try {
+        pt = IRCPing(line);
+    } catch (Exception e) {
+        import vibe.core.log;
+        logWarn(e.msg);
+        return "";
+    }
+
+
+    if(!pt.successful) return "";
+    traverse(pt,pong);
+    return pong;
+}

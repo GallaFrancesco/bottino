@@ -82,7 +82,6 @@ struct Bot
     private {
         Task tid;
         BotState state = BotState.ASLEEP;
-        BotCache!string pipeline;
     }
 
     immutable string name;
@@ -94,7 +93,6 @@ struct Bot
         name = n;
         config = c;
         work = act;
-        pipeline = new BotCache!string();
     }
 
     void notify(immutable string line) @trusted
@@ -192,31 +190,3 @@ private enum BotState {
 }
 
 /* ----------------------------------------------------------------------- */
-
-private class BotCache(T)
-{
-    private {
-        immutable(T)[] cache;
-    }
-
-    bool empty() @safe
-    {
-        return cache.empty;
-    }
-
-    immutable(T) front() @safe
-    {
-        return cache.front;
-    }
-
-    void popFront() @safe
-    {
-        assert(!empty);
-        cache.popFront();
-    }
-
-    void insertBack(immutable T item) @safe nothrow
-    {
-        cache ~= item;
-    }
-}

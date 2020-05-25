@@ -52,4 +52,6 @@ void main(string[] args)
     irc.registerBot(loggerBot.name, loggerBot);
 
     irc.serveBots();
+
+    logInfo("CIAO UAGNU'! Bottino is going down.");
 }

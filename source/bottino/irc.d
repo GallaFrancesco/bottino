@@ -1,5 +1,6 @@
 module bottino.irc;
 
+import bottino.ircgrammar : tryPong;
 import bottino.bots;
 
 import vibe.core.log;
@@ -99,11 +100,16 @@ struct IrcClient
     {
         while(!empty()) {
             string line = front();
-            bots.each!((ref Bot bot) {
+            string pong = tryPong(line);
+            if(!pong.empty) {
+                logInfo("[PING] Sending PONG");
+                sendRaw(pong);
+            } else {
+                bots.each!((ref Bot bot) {
                     bot.notify(line);
                 });
+            }
         }
-        logInfo("CIAO UAGNU'! Bottino is going down.");
     }
 }
 
