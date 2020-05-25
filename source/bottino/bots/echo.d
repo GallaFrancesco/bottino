@@ -24,7 +24,7 @@ Bot createEchoBot(immutable string name,
 bool echoWork(alias IRC)(BotConfig config, string line) @safe nothrow
 {
     auto cmd = IRCCommand(line);
-    if(cmd.valid) {
+    if(cmd.valid && cmd.command == COMMAND) {
         string echo = "PRIVMSG "~cmd.target~" "~cmd.text;
         IRC.sendRaw(echo);
     }
