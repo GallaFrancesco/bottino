@@ -115,7 +115,7 @@ struct Bot
         case BotState.ASLEEP:
             debug logInfo("[BOT: "~name~"] Waking up");
             state = BotState.AWAKE;
-            processTask();
+            workAsync();
             break;
 
         case BotState.DEAD:
@@ -155,28 +155,26 @@ struct Bot
         state = BotState.DEAD;
     }
 
-    private void processTask() @safe
+    private void workAsync() @safe
     {
-        tid = runTask(&asyncProc);
-    }
+        tid = runTask(() @trusted {
 
-    private void asyncProc() @trusted
-    {
-        while(state == BotState.AWAKE) {
-            auto line = receiveOnly!string();
+                while(state == BotState.AWAKE) {
+                    auto line = receiveOnly!string();
 
-            if(IRCCommand(line).command == STOPPER) {
-                logInfo("[BOT "~name~"] Going to sleep");
-                sleep();
-                break;
-            }
+                    if(IRCCommand(line).command == STOPPER) {
+                        logInfo("[BOT "~name~"] Going to sleep");
+                        sleep();
+                        break;
+                    }
 
-            bool ok = work(config, line);
-            if(!ok) {
-                kill();
-                break;
-            }
-        }
+                    bool ok = work(config, line);
+                    if(!ok) {
+                        kill();
+                        break;
+                    }
+                }
+            });
     }
 
 }
