@@ -1,10 +1,15 @@
 module bottino.bots.logger;
 
-import bottino.bots.common;
+import bottino.bots;
+import bottino.ircgrammar;
 
 import vibe.core.file;
 import vibe.core.path;
 import vibe.core.log;
+
+/* ----------------------------------------------------------------------- */
+
+/* This bot does not accept commands.                                      */
 
 /* ----------------------------------------------------------------------- */
 
@@ -16,14 +21,14 @@ Bot createLoggerBot(immutable string name,
     if(!existsFile(logDir)) {
         createDirectory(logDir);
     }
-    return Bot(name, config, asBotAction!loggerWork());
+    return Bot(name, config, asBotAction!(loggerWork!lDir)());
 }
 
 /* ----------------------------------------------------------------------- */
 
-bool loggerWork(BotConfig config, string line) @safe nothrow
+bool loggerWork(alias LOGDIR)(BotConfig config, string line) @safe nothrow
 {
-    debug logWarn("[LOGGER] "~line);
+    logInfo(line);
     return true;
 }
 

@@ -1,6 +1,6 @@
 module bottino.irc;
 
-import bottino.bots.common;
+import bottino.bots;
 
 import vibe.core.log;
 import vibe.core.net;
@@ -99,12 +99,12 @@ struct IrcClient
     {
         while(!empty()) {
             string line = front();
-            foreach(bot; bots) {
-                bot.notify(line);
-            }
+            bots.each!((ref Bot bot) {
+                    bot.notify(line);
+                });
         }
+        logInfo("CIAO UAGNU'! Bottino is going down.");
     }
-
 }
 
 /* ----------------------------------------------------------------------- */
@@ -175,7 +175,12 @@ private struct Irc(ST)
     {
         assert(stream, "Cannot send on uninitialized stream");
         try {
-            stream.write(raw);
+
+            if(raw[$-1] != '\n')
+                stream.write(raw ~ "\n");
+            else
+                stream.write(raw);
+
         } catch (Exception e) {
             logWarn("Write failed: "~e.msg);
         }

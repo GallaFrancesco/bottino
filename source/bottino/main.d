@@ -1,8 +1,6 @@
 module bottino.main;
 import bottino.irc;
-import bottino.bots.common;
-import bottino.bots.logger;
-import bottino.bots.echo;
+import bottino.bots;
 
 import vibe.core.net;
 import vibe.core.log;
@@ -50,8 +48,8 @@ void main(string[] args)
 
     auto loggerBot = createLoggerBot("loggerino", config, "./logs");
     auto echoBot = createEchoBot("echoerino", config, irc);
-    irc.registerBot(loggerBot.name, loggerBot);
     irc.registerBot(echoBot.name, echoBot);
+    irc.registerBot(loggerBot.name, loggerBot);
 
     irc.serveBots();
 }

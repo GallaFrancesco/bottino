@@ -1,8 +1,13 @@
-module bottino.bots.common;
+module bottino.bots;
+public import bottino.bots.logger;
+public import bottino.bots.echo;
+
+import bottino.ircgrammar;
 
 import sumtype;
 
 import vibe.core.core;
+import vibe.core.concurrency : send, receiveOnly;
 import vibe.core.task;
 import vibe.core.log;
 
@@ -14,6 +19,15 @@ import std.meta;
 import std.conv : to;
 
 debug import std.stdio;
+
+/* ----------------------------------------------------------------------- */
+
+static immutable string PREFIX = "!";
+
+// default accepted commands
+static immutable string STOPPER = PREFIX ~ "stop";
+static immutable string HELPER = PREFIX ~ "help";
+
 
 /* ----------------------------------------------------------------------- */
 
@@ -83,7 +97,7 @@ struct Bot
         pipeline = new BotCache!string();
     }
 
-    void notify(immutable string line) @safe
+    void notify(immutable string line) @trusted
     {
         if(state == BotState.DEAD) {
             debug logWarn("[BOT: "~name~"] Cannot notify dead bot."
@@ -91,15 +105,9 @@ struct Bot
             return;
         }
 
-        if(state == BotState.AWAKE) {
-            sleep();
-        }
-
-        pipeline.insertBack(line);
-
-        if(state == BotState.ASLEEP) { // wake up and start processing
-            wakeup();
-        }
+        if(state == BotState.ASLEEP) wakeup();
+        tid.send(line);
+        yield();
     }
 
     void wakeup() @safe
@@ -107,6 +115,7 @@ struct Bot
         final switch(state) {
 
         case BotState.ASLEEP:
+            debug logInfo("[BOT: "~name~"] Waking up");
             state = BotState.AWAKE;
             processTask();
             break;
@@ -136,8 +145,8 @@ struct Bot
             break;
 
         case BotState.AWAKE:
+            debug logInfo("[BOT: "~name~"] Going to sleep");
             state = BotState.ASLEEP;
-            tid.join();
             break;
         }
     }
@@ -153,19 +162,20 @@ struct Bot
         tid = runTask(&asyncProc);
     }
 
-    private void asyncProc() @safe
+    private void asyncProc() @trusted
     {
         while(state == BotState.AWAKE) {
-            bool ok = work(config, pipeline.front);
-            if(!ok) {
-                kill();
+            auto line = receiveOnly!string();
+
+            if(IRCCommand(line).command == STOPPER) {
+                logInfo("[BOT "~name~"] Going to sleep");
+                sleep();
                 break;
             }
 
-            pipeline.popFront();
-
-            if(pipeline.empty()) {
-                sleep();
+            bool ok = work(config, line);
+            if(!ok) {
+                kill();
                 break;
             }
         }

@@ -1,11 +1,14 @@
 module bottino.bots.echo;
 
-import bottino.bots.common;
+import bottino.bots;
 import bottino.irc;
 import bottino.ircgrammar;
 
 import vibe.core.log;
-debug import std.stdio;
+
+/* ----------------------------------------------------------------------- */
+
+immutable string COMMAND = PREFIX ~ "echo";
 
 /* ----------------------------------------------------------------------- */
 
@@ -20,8 +23,10 @@ Bot createEchoBot(immutable string name,
 
 bool echoWork(alias IRC)(BotConfig config, string line) @safe nothrow
 {
-    if(ircg_isPrivMsg(line)) {
-        IRC.sendRaw(ircg_noPrefix(line));
+    auto cmd = IRCCommand(line);
+    if(cmd.valid) {
+        string echo = "PRIVMSG "~cmd.target~" "~cmd.text;
+        IRC.sendRaw(echo);
     }
     return true;
 }

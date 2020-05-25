@@ -1,10 +1,17 @@
 module bottino.ircgrammar;
 
+import bottino.bots : PREFIX;
+
 import pegged.grammar;
 
 import std.string;
 import std.array;
 import std.ascii;
+import std.algorithm.iteration;
+
+/* ------------------------------------------------------------- */
+/* IRC reply line                                                */
+/* ------------------------------------------------------------- */
 
 mixin(grammar(`
 IRCReply:
@@ -15,10 +22,8 @@ IRCReply:
    Char     <~ .
 `));
 
-/* ------------------------------------------------------------- */
-/* Buffer line utilities                                         */
-/* ------------------------------------------------------------- */
-bool ircg_isReply(immutable string line) @trusted nothrow
+// for now we only need to know if a line is a reply or not
+bool isReply(immutable string line) @trusted nothrow
 {
     try {
         return IRCReply(line).successful;
@@ -27,22 +32,67 @@ bool ircg_isReply(immutable string line) @trusted nothrow
     }
 }
 
-bool ircg_isPrivMsg(immutable string line) @trusted nothrow
+/* ------------------------------------------------------------- */
+/* IRC command line                                              */
+/* ------------------------------------------------------------- */
+
+mixin(grammar(`
+IRCComm:
+   Line     <- Prefix space* MsgType space* ^Target space* Message
+   Prefix   <- ":" (!space Char)*
+   Target   <- ("#" identifier) / identifier
+   MsgType  <- "PRIVMSG"
+   Message  <- ":" ^Command space ^Text
+   Command  <- "`~PREFIX~`" identifier
+   Text     <- (space / Char)*
+   Char     <- .
+`));
+
+// built by parsing through IRCComm
+struct IRCCommand
 {
-    try {
-        return line.split!isWhite()[1] == "PRIVMSG";
-    } catch(Exception e) {
-        assert(false);
+    string target;
+    string command;
+    string text;
+    bool valid;
+
+    this(immutable string line) @trusted nothrow
+    {
+        ParseTree pt;
+        try {
+            pt = IRCComm(line);
+        } catch(Exception e) {
+            import vibe.core.log;
+            logWarn(e.msg);
+            valid = false;
+            return;
+        }
+
+        valid = pt.successful;
+
+        if(!valid) return;
+
+        traverse(pt);
+        assert(!target.empty && !command.empty,
+               "Something went wrong with command AST traversal");
+    }
+
+    private void traverse(PT)(const ref PT pt) @safe nothrow
+    {
+        switch(pt.name) {
+        case "IRCComm.Target":
+            target = pt.input[pt.begin..pt.end];
+            break;
+        case "IRCComm.Command":
+            command = pt.input[pt.begin..pt.end];
+            break;
+        case "IRCComm.Text":
+            text = pt.input[pt.begin..pt.end];
+            break;
+        default:
+            break;
+        }
+
+        pt.children.each!((const ref PT p) => traverse(p));
     }
 }
-
-string ircg_noPrefix(immutable string line) @trusted nothrow
-{
-    try {
-        return line.split!isWhite()[1..$].join(" ");
-    } catch(Exception e) {
-        assert(false);
-    }
-}
-
-
