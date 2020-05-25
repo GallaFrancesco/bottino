@@ -2,6 +2,7 @@ module bottino.main;
 import bottino.irc;
 import bottino.bots.common;
 import bottino.bots.logger;
+import bottino.bots.echo;
 
 import vibe.core.net;
 import vibe.core.log;
@@ -47,8 +48,10 @@ void main(string[] args)
     IrcClient irc = createIrcClient(server, port, password, tls);
     irc.connect(config.nick, config.realname);
 
-    auto loggerBot = createLoggerBot(config.nick, config, "./logs");
+    auto loggerBot = createLoggerBot("loggerino", config, "./logs");
+    auto echoBot = createEchoBot("echoerino", config, irc);
     irc.registerBot(loggerBot.name, loggerBot);
+    irc.registerBot(echoBot.name, echoBot);
 
     irc.serveBots();
 }

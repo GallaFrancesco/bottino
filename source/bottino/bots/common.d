@@ -48,6 +48,7 @@ struct BotConfig
         import vibe.core.concurrency;
         auto i_chs = makeIsolatedArray!string(chs.length);
 
+        import std.stdio;
         foreach(ch; chs) {
             assert(!ch.empty, "Empty channel name provided.");
 

@@ -11,8 +11,10 @@ import vibe.stream.operations;
 import sumtype;
 
 import std.string;
+import std.array;
 import std.conv : to;
 import std.algorithm.mutation;
+import std.algorithm.iteration;
 
 /* ----------------------------------------------------------------------- */
 
@@ -36,6 +38,10 @@ struct IrcClient
     _IrcClient proto;
     Bot[] bots;
 
+    /* ------------------------------------------------------------- */
+    /* Connection Handling                                           */
+    /* ------------------------------------------------------------- */
+
     void connect(string nick, string realname) @safe
     {
         proto.match!(
@@ -43,11 +49,18 @@ struct IrcClient
                    (ref IrcTLS tls) => tls.connect(nick, realname));
     }
 
-    void send(string cmd, string[] params ...) @safe
+    void send(string cmd, string[] params ...) @safe nothrow
     {
         proto.match!(
                    (ref IrcTCP tcp) => tcp.send(cmd, params),
                    (ref IrcTLS tls) => tls.send(cmd, params));
+    }
+
+    void sendRaw(immutable string raw) @safe nothrow
+    {
+        proto.match!(
+                   (ref IrcTCP tcp) => tcp.sendRaw(raw),
+                   (ref IrcTLS tls) => tls.sendRaw(raw));
     }
 
     string front() @safe
@@ -67,10 +80,18 @@ struct IrcClient
                    (ref IrcTLS tls) => tls.empty());
     }
 
+    /* ------------------------------------------------------------- */
+    /* Bot Management                                                */
+    /* ------------------------------------------------------------- */
+
     void registerBot(immutable string name, Bot bot) @safe
     {
         debug logInfo("[BOT] Registering bot: "~bot.name);
         bots ~= bot;
+        bot.config.channels.each!(
+                                  (immutable ch) {
+                                      if(!ch.empty) send("JOIN", ch);
+                                  });
     }
 
     // handler for asynchronous server buffer processing
@@ -83,6 +104,7 @@ struct IrcClient
             }
         }
     }
+
 }
 
 /* ----------------------------------------------------------------------- */
@@ -142,7 +164,21 @@ private struct Irc(ST)
     void send(string cmd, string[] params...)
     {
         assert(stream, "Cannot send on uninitialized stream");
-        stream.write(command(cmd,params));
+        try {
+            stream.write(command(cmd,params));
+        } catch (Exception e) {
+            logWarn("Write failed: "~e.msg);
+        }
+    }
+
+    void sendRaw(immutable string raw)
+    {
+        assert(stream, "Cannot send on uninitialized stream");
+        try {
+            stream.write(raw);
+        } catch (Exception e) {
+            logWarn("Write failed: "~e.msg);
+        }
     }
 
     /* ------------------------------------------------------------- */
