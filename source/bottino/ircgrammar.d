@@ -1,7 +1,5 @@
 module bottino.ircgrammar;
 
-import bottino.bots : PREFIX;
-
 import pegged.grammar;
 
 import std.string;
@@ -9,10 +7,11 @@ import std.array;
 import std.ascii;
 import std.algorithm.iteration;
 
+immutable string PREFIX = "!";
+
 /* ------------------------------------------------------------- */
 /* IRC reply line                                                */
 /* ------------------------------------------------------------- */
-
 mixin(grammar(`
 IRCReply:
    Line     <~ Prefix space* Code space* Message
@@ -42,7 +41,7 @@ IRCComm:
    Prefix   <- ":" (!space Char)*
    Target   <- ("#" identifier) / identifier
    MsgType  <- "PRIVMSG"
-   Message  <- ":" ^Command space ^Text
+   Message  <- ":" ^Command (space ^Text)*
    Command  <- "`~PREFIX~`" identifier
    Text     <- (space / Char)*
    Char     <- .

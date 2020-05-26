@@ -8,7 +8,7 @@ import vibe.core.log;
 
 /* ----------------------------------------------------------------------- */
 
-immutable string COMMAND = PREFIX ~ "echo";
+// COMMAND = PREFIX ~ "echo";
 
 /* ----------------------------------------------------------------------- */
 
@@ -24,7 +24,7 @@ Bot createEchoBot(immutable string name,
 bool echoWork(alias IRC)(BotConfig config, string line) @safe nothrow
 {
     auto cmd = IRCCommand(line);
-    if(cmd.valid && cmd.command == COMMAND) {
+    if(cmd.valid && cmd.command == COMMANDS["echoBot"]) {
         string echo = "PRIVMSG "~cmd.target~" :"~cmd.text;
         IRC.sendRaw(echo);
     }

@@ -14,6 +14,8 @@ import std.stdio;
 import std.string;
 import std.getopt;
 
+export immutable string PREFIX = "!";
+
 void main(string[] args)
 {
     bool tls = false;
@@ -48,8 +50,10 @@ void main(string[] args)
 
     auto loggerBot = createLoggerBot("loggerino", config, "./logs");
     auto echoBot = createEchoBot("echoerino", config, irc);
+    auto helpBot = createHelpBot("helperino", config, irc);
     irc.registerBot(echoBot.name, echoBot);
     irc.registerBot(loggerBot.name, loggerBot);
+    irc.registerBot(helpBot.name, helpBot);
 
     irc.serveBots();
 

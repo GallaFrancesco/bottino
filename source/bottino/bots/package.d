@@ -1,10 +1,8 @@
 module bottino.bots;
 public import bottino.bots.logger;
 public import bottino.bots.echo;
-
+public import bottino.bots.help;
 import bottino.ircgrammar;
-
-import sumtype;
 
 import vibe.core.core;
 import vibe.core.concurrency : send, receiveOnly;
@@ -18,17 +16,66 @@ import std.range;
 import std.meta;
 import std.conv : to;
 
-debug import std.stdio;
-
+/* ----------------------------------------------------------------------- */
+/* Handle registered bot commands                                          */
 /* ----------------------------------------------------------------------- */
 
-static immutable string PREFIX = "!";
+BotCommands COMMANDS;
 
-// default accepted commands
-static immutable string STOPPER = PREFIX ~ "stop";
-static immutable string HELPER = PREFIX ~ "help";
+static this()
+{
+    COMMANDS["echoBot"] = ["echo", "Always in agreement with you"];
+    COMMANDS["stopBot"] = ["stop", "You can(not) stop me"];
+    COMMANDS["helpBot"] = ["help", "This help"];
+}
 
+struct BotCommands
+{
+    private string[string] commands;
+    private string[string] descriptions;
 
+    void opIndexAssign(string[] valDesc, string key) @safe nothrow
+    {
+        assert(valDesc.length == 2, "Invalid command description");
+
+        string val = valDesc[0];
+        assert(val.length < 16,
+               "Command must be less than 16 characters long.");
+        if(val.startsWith(PREFIX)) commands[key] = val;
+        else commands[key] = PREFIX ~ val;
+
+        descriptions[key] = valDesc[1];
+    }
+
+    string opIndex(string key) @safe nothrow
+    {
+        if(key in commands)
+            return commands[key];
+        else
+            return PREFIX ~ "not_a_command";
+    }
+
+    string describe(string key) @safe nothrow
+    {
+        if(key in commands && key in descriptions)
+            return descriptions[key];
+        else
+            return PREFIX ~ "not_a_command";
+    }
+
+    auto byKey() @safe
+    {
+        return commands.byKey.array;
+    }
+
+    auto byValue() @safe
+    {
+        return commands.byValue.array;
+    }
+}
+
+/* ----------------------------------------------------------------------- */
+/* Actions are the work done by a bot on every line                        */
 /* ----------------------------------------------------------------------- */
 
 alias BotAction = bool delegate(BotConfig, immutable(string)) @safe nothrow;
@@ -42,6 +89,8 @@ auto asBotAction(alias funct)() @trusted
     return dg;
 }
 
+/* ----------------------------------------------------------------------- */
+/* The Bot                                                                 */
 /* ----------------------------------------------------------------------- */
 
 struct BotConfig
@@ -76,7 +125,6 @@ struct BotConfig
 
 /* ----------------------------------------------------------------------- */
 
-// asynchronous interface to handle multiple bots
 struct Bot
 {
     private {
@@ -155,6 +203,7 @@ struct Bot
         state = BotState.DEAD;
     }
 
+    // asynchronous interface to handle multiple bots
     private void workAsync() @safe
     {
         tid = runTask(() @trusted {
@@ -162,7 +211,7 @@ struct Bot
                 while(state == BotState.AWAKE) {
                     auto line = receiveOnly!string();
 
-                    if(IRCCommand(line).command == STOPPER) {
+                    if(IRCCommand(line).command == COMMANDS["stopBot"]) {
                         logInfo("[BOT "~name~"] Going to sleep");
                         sleep();
                         break;
