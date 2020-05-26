@@ -38,10 +38,11 @@ bool isReply(immutable string line) @trusted nothrow
 mixin(grammar(`
 IRCComm:
    Line     <- Prefix space* MsgType space* ^Target space* Message
-   Prefix   <- ":" (!space Char)*
+   Prefix   <- ":" ^Sender "!" (!space Char)*
    Target   <- ("#" identifier) / identifier
    MsgType  <- "PRIVMSG"
    Message  <- ":" ^Command (space ^Text)*
+   Sender   <- (!space !"!" Char)+
    Command  <- "`~PREFIX~`" identifier
    Text     <- (space / Char)*
    Char     <- .
@@ -50,6 +51,7 @@ IRCComm:
 // built by parsing through IRCComm
 struct IRCCommand
 {
+    string sender;
     string target;
     string command;
     string text;
@@ -58,6 +60,7 @@ struct IRCCommand
     this(immutable string line) @trusted nothrow
     {
         ParseTree pt;
+
         try {
             pt = IRCComm(line);
         } catch(Exception e) {
@@ -79,6 +82,9 @@ struct IRCCommand
     private void traverse(PT)(const ref PT pt) @safe nothrow
     {
         switch(pt.name) {
+        case "IRCComm.Sender":
+            sender = pt.input[pt.begin..pt.end];
+            break;
         case "IRCComm.Target":
             target = pt.input[pt.begin..pt.end];
             break;
@@ -93,6 +99,16 @@ struct IRCCommand
         }
 
         pt.children.each!((const ref PT p) => traverse(p));
+    }
+
+    bool isPrivateQuery(immutable string nick) @safe nothrow
+    {
+        return target == nick;
+    }
+
+    string replyTarget(immutable string nick) @safe nothrow
+    {
+        return isPrivateQuery(nick) ? sender : target;
     }
 }
 

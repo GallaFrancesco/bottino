@@ -31,7 +31,7 @@ bool helpWork(alias IRC)(BotConfig config, string line) @safe nothrow
         COMMANDS.byKey.each!((string name) {
                 string dots;
                 foreach(_; iota(0,16-COMMANDS[name].length)) dots ~= ".";
-                string help = "PRIVMSG " ~ cmd.target ~ " :" ~
+                string help = "PRIVMSG " ~ cmd.replyTarget(config.nick) ~ " :" ~
                     COMMANDS[name] ~
                     dots ~
                     COMMANDS.describe(name);
