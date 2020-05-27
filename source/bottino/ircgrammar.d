@@ -51,9 +51,18 @@ IRCComm:
 // built by parsing through IRCComm
 struct IRCCommand
 {
+    struct BotCommand {
+        string cmd;
+        alias cmd this;
+        /// Implement equality but consider that the user may forgot to put a "!" in front of bot.command
+        bool opEquals(const string lf) pure @safe nothrow {
+            return lf == cmd || (cmd.startsWith("!") && cmd[1..$] == lf);
+        }
+    }
+    
     string sender;
     string target;
-    string command;
+    BotCommand command;
     string text;
     bool valid;
 
