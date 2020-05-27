@@ -22,12 +22,14 @@ Bot[] makeBots(ref IrcClient irc, const BotConfig config)
 {
     import bottino.bots.logger;
     import bottino.bots.echo;
+    import bottino.bots.raver;
     import bottino.bots.nickserv;
     import bottino.bots.help;
 
     Bot[] bots;
 
     bots ~= createEchoBot("echoerino", config, irc);
+    bots ~= createRaverBot("raverino", config, irc);
     bots ~= createNickServBot("nickerino", config, irc);
     bots ~= createHelpBot("helperino", config, bots, irc);
     bots ~= createLoggerBot("loggerino", config, "./logs");
@@ -202,3 +204,21 @@ private enum BotState {
 }
 
 /* ----------------------------------------------------------------------- */
+
+void print(T...) (T args) @safe nothrow{
+    debug{
+        import std.stdio: writeln;
+        try{
+            writeln(args);
+        }catch(Exception e){} // hope it never blows up
+    }
+}
+                
+void privateReply(alias IRC)(IRCCommand cmd, immutable string msg)@safe nothrow{
+    string irc_msg = "PRIVMSG "~cmd.sender~" :"~msg;
+    IRC.sendRaw(irc_msg);
+}
+void reply(alias IRC)(IRCCommand cmd, immutable string msg, const BotConfig config)@safe nothrow{
+    string irc_msg = "PRIVMSG "~cmd.replyTarget(config.nick)~" :"~msg;
+    IRC.sendRaw(irc_msg);
+}
