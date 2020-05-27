@@ -21,7 +21,7 @@ Bot createLoggerBot(immutable string name,
     if(!existsFile(logDir)) {
         createDirectory(logDir);
     }
-    return Bot(name, config, asBotAction!(loggerWork!lDir)());
+    return Bot(name, "", "", config, asBotAction!(loggerWork!lDir)());
 }
 
 /* ----------------------------------------------------------------------- */

@@ -12,11 +12,13 @@ import vibe.core.log;
 
 /* ----------------------------------------------------------------------- */
 
+immutable command = "echo";
+
 Bot createEchoBot(immutable string name,
                   immutable BotConfig config,
                   ref IrcClient irc) @safe
 {
-    return Bot(name, config, asBotAction!(echoWork!irc));
+    return Bot(name, command, "Always in agreement with you", config, asBotAction!(echoWork!irc));
 }
 
 /* ----------------------------------------------------------------------- */
@@ -24,7 +26,7 @@ Bot createEchoBot(immutable string name,
 bool echoWork(alias IRC)(BotConfig config, string line) @safe nothrow
 {
     auto cmd = IRCCommand(line);
-    if(cmd.valid && cmd.command == COMMANDS["echoBot"]) {
+    if(cmd.valid && cmd.command == command) {
         string echo = "PRIVMSG "~cmd.replyTarget(config.nick)~" :"~cmd.text;
         IRC.sendRaw(echo);
     }
