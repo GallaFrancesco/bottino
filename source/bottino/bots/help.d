@@ -26,12 +26,6 @@ Bot createHelpBot(immutable string name,
     bool helpWork(alias IRC)(BotConfig config, string line) @safe nothrow
     {
         auto cmd = IRCCommand(line);
-            debug {
-                try{
-                    import std.stdio;
-                    writeln("HELP BOT ", cmd.valid, " ", cmd.command, " ", command);
-                }catch (Exception e){}
-            }
             if(cmd.valid && cmd.command == command) {
                 BotCommands COMMANDS;
                 // build commands struct
