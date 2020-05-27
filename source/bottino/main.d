@@ -14,7 +14,28 @@ import std.stdio;
 import std.string;
 import std.getopt;
 
-export immutable string PREFIX = "!";
+/* ----------------------------------------------------------------------- */
+/* Handle registered bot commands                                          */
+/* ----------------------------------------------------------------------- */
+
+Bot[] makeBots(ref IrcClient irc, const BotConfig config)
+{
+    import bottino.bots.logger;
+    import bottino.bots.echo : createEchoBot;
+    import bottino.bots.raver : createRaverBot;
+    import bottino.bots.nickserv : createNickServBot;
+    import bottino.bots.help : createHelpBot;
+
+    Bot[] bots;
+
+    bots ~= createEchoBot("echoerino", config, irc);
+    bots ~= createRaverBot("raverino", config, irc);
+    bots ~= createNickServBot("nickerino", config, irc);
+    bots ~= createHelpBot("helperino", config, bots, irc);
+    // bots ~= createLoggerBot("loggerino", config, "./logs");
+
+    return bots;
+}
 
 void main(string[] args)
 {

@@ -1,13 +1,12 @@
 module bottino.bots.raver;
 
-import bottino.bots;
+import bottino.bots : Bot, BotConfig, asBotAction, reply;
 import bottino.irc;
 import bottino.ircgrammar;
 
 import pegged.grammar;
 import sumtype;
 import vibe.core.file;
-
 
 immutable command = "info";
 
