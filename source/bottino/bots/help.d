@@ -12,6 +12,7 @@ import std.range;
 /* ----------------------------------------------------------------------- */
 
 immutable command = "help";
+immutable helpText = "Aiutati che Dio ti aiuta";
 
 /* ----------------------------------------------------------------------- */
 
@@ -29,6 +30,7 @@ Bot createHelpBot(immutable string name,
                 // build commands struct
                 foreach(bot; bots)
                     COMMANDS[bot.name] = [bot.command, bot.helpText] ;
+                COMMANDS[name] = [command,  helpText];
         
                 COMMANDS.byKey.each!((string name) {
                         string dots;
@@ -45,7 +47,7 @@ Bot createHelpBot(immutable string name,
 
 /* ----------------------------------------------------------------------- */
 
-    return Bot(name, command, "Aiutati che Dio ti aiuta", config, asBotAction!(helpWork!irc));
+    return Bot(name, command, helpText, config, asBotAction!(helpWork!irc));
 }
 
 /* ----------------------------------------------------------------------- */
