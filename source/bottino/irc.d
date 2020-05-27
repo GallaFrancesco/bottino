@@ -1,6 +1,6 @@
 module bottino.irc;
 
-import bottino.ircgrammar : tryPong;
+import bottino.ircgrammar : tryPong, IRCInvite;
 import bottino.bots;
 
 import vibe.core.log;
@@ -99,15 +99,25 @@ struct IrcClient
     void serveBots() @safe
     {
         while(!empty()) {
+
             string line = front();
             string pong = tryPong(line);
             if(!pong.empty) {
                 logInfo("[PING] Sending PONG");
                 sendRaw(pong);
             } else {
+
                 bots.each!((ref Bot bot) {
-                    bot.notify(line);
-                });
+                        // check if bot received an invite
+                        auto inv = IRCInvite(line);
+                        if(inv.valid && inv.target == bot.config.nick) {
+                            logInfo("[INVITE] From "~inv.sender~": Joining "~inv.channel);
+                            send("JOIN", inv.channel);
+                        } else {
+                            // put line in bots' queue
+                            bot.notify(line);
+                        }
+                    });
             }
         }
     }

@@ -42,11 +42,21 @@ IRCComm:
    Target   <- ("#" Ident) / Ident
    MsgType  <- "PRIVMSG"
    Message  <- ":" ^Command (space ^Text)*
-   Sender   <- Ident
+   Sender   <- (!space !"!" Char)+
    Command  <- "`~PREFIX~`" identifier
    Text     <- (space / Char)*
-   Ident    <- (!space !"!" Char)+
+   Ident    <- (Special / identifier) ([0-9] / Special / identifier)*
    Char     <- .
+   Special  <- ("[" /
+                "]" /
+                "{" /
+                "}" /
+                "\" /
+                "|" /
+                "^" /
+                "`" /
+                "–" /
+                "_")
 `));
 
 // built by parsing through IRCComm
@@ -168,62 +178,13 @@ string tryPong(immutable string line) @trusted nothrow
 /* ------------------------------------------------------------- */
 
 mixin(grammar(`
-IRCInv:
-   Line     <- Prefix space* "INVITE" space* ^Target space* ^Channel
+IRCInvite:
+   Line     <- Prefix space* "INVITE" space* ^Target space* Message
    Prefix   <- ":" ^Sender "!" (!space Char)*
-   Target   <- Ident
-   Channel  <- ("#" Ident)
-   Sender   <- Ident
-   Ident    <- (!space !"!" Char)+
+   Target   <- ("#" identifier) / identifier
+   Message  <- ":" ^Command (space ^Text)*
+   Sender   <- (!space !"!" Char)+
+   Command  <- "`~PREFIX~`" identifier
+   Text     <- (space / Char)*
    Char     <- .
 `));
-
-// built by parsing through IRCComm
-struct IRCInvite
-{
-    string sender;
-    string target;
-    string channel;
-    bool valid;
-
-    this(immutable string line) @trusted nothrow
-    {
-        ParseTree pt;
-
-        try {
-            pt = IRCInv(line);
-        } catch(Exception e) {
-            import vibe.core.log;
-            logWarn(e.msg);
-            valid = false;
-            return;
-        }
-
-        valid = pt.successful;
-
-        if(!valid) return;
-
-        traverse(pt);
-        assert(!target.empty && !channel.empty,
-               "Something went wrong with invite AST traversal");
-    }
-
-    private void traverse(PT)(const ref PT pt) @safe nothrow
-    {
-        switch(pt.name) {
-        case "IRCInv.Sender":
-            sender = pt.input[pt.begin..pt.end];
-            break;
-        case "IRCInv.Target":
-            target = pt.input[pt.begin..pt.end];
-            break;
-        case "IRCInv.Channel":
-            channel = pt.input[pt.begin..pt.end];
-            break;
-        default:
-            break;
-        }
-
-        pt.children.each!((const ref PT p) => traverse(p));
-    }
-}
