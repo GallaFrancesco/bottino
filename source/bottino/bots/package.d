@@ -30,9 +30,9 @@ Bot[] makeBots(ref IrcClient irc, const BotConfig config)
 
     bots ~= createEchoBot("echoerino", config, irc);
     bots ~= createRaverBot("raverino", config, irc);
-    bots ~= createNickServBot("nickerino", config, irc);
+    // bots ~= createNickServBot("nickerino", config, irc);
     bots ~= createHelpBot("helperino", config, bots, irc);
-    bots ~= createLoggerBot("loggerino", config, "./logs");
+    // bots ~= createLoggerBot("loggerino", config, "./logs");
 
     return bots;
 }
@@ -197,15 +197,17 @@ struct Bot
 
 /* ----------------------------------------------------------------------- */
 
-private enum BotState {
-                       AWAKE,
-                       ASLEEP,
-                       DEAD
+private enum BotState
+{
+ AWAKE,
+ ASLEEP,
+ DEAD
 }
 
 /* ----------------------------------------------------------------------- */
 
-void print(T...) (T args) @safe nothrow{
+void print(T...) (T args) @safe nothrow
+{
     debug{
         import std.stdio: writeln;
         try{
@@ -213,12 +215,21 @@ void print(T...) (T args) @safe nothrow{
         }catch(Exception e){} // hope it never blows up
     }
 }
-                
-void privateReply(alias IRC)(IRCCommand cmd, immutable string msg)@safe nothrow{
+
+/* ----------------------------------------------------------------------- */
+
+void privateReply(alias IRC)(IRCCommand cmd, immutable string msg) @safe nothrow
+{
     string irc_msg = "PRIVMSG "~cmd.sender~" :"~msg;
     IRC.sendRaw(irc_msg);
 }
-void reply(alias IRC)(IRCCommand cmd, immutable string msg, const BotConfig config)@safe nothrow{
+
+/* ----------------------------------------------------------------------- */
+
+void reply(alias IRC)(IRCCommand cmd, immutable string msg, const BotConfig config) @safe nothrow
+{
     string irc_msg = "PRIVMSG "~cmd.replyTarget(config.nick)~" :"~msg;
     IRC.sendRaw(irc_msg);
 }
+
+/* ----------------------------------------------------------------------- */

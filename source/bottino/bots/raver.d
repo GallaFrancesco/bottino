@@ -1,11 +1,12 @@
 module bottino.bots.raver;
 
-import pegged.grammar;
-import sumtype;
-
 import bottino.bots;
 import bottino.irc;
 import bottino.ircgrammar;
+
+import pegged.grammar;
+import sumtype;
+import vibe.core.file;
 
 
 immutable command = "info";
@@ -41,11 +42,16 @@ bool raverWork(alias IRC)(const BotConfig config, string line) @safe nothrow
     void give_info()@safe nothrow{
         import std.format: format;
         try{
+            if(!existsFile(store)) {
+                cmd.reply!IRC("No info, fatti due contatti", config);
+                return;
+            }
+
             store.readFileUTF8()
                 .lineSplitter
                 .enumerate()
                 .map!(t => format!"%d: %s"(t[0], t[1]))
-                .tee!print
+                // .tee!print
                 .each!(st => cmd.reply!IRC(st, config));
         }catch(Exception e){
             cmd.reply!IRC("Exception caught: "~e.msg, config);
@@ -111,6 +117,7 @@ bool raverWork(alias IRC)(const BotConfig config, string line) @safe nothrow
 }
 
 /* ----------------------------------------------------------------------- */
+
 struct Flyer{
     string text;
 }
@@ -126,6 +133,7 @@ struct InfoList{
 }
 struct Help{
 }
+
 mixin(grammar(`
 Comm:
    Start    <- (Flyer | Del | Help) 
@@ -139,7 +147,9 @@ Comm:
 `));
 
 alias Command = SumType!(Flyer, DeleteFlyer, Error, InfoList, Help);
-Command parse(const string text) @trusted nothrow{ // TODO: reduce trusted scope
+
+Command parse(const string text) @trusted nothrow
+{ // TODO: reduce trusted scope
     import std.array: join;
             
     typeof(return) ret;

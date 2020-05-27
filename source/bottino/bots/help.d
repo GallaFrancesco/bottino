@@ -11,11 +11,9 @@ import std.range;
 
 /* ----------------------------------------------------------------------- */
 
-// COMMAND = PREFIX ~ "help";
+immutable command = "help";
 
 /* ----------------------------------------------------------------------- */
-
-immutable command = "help";
 
 Bot createHelpBot(immutable string name,
                   immutable BotConfig config,
