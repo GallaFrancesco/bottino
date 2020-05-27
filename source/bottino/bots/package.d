@@ -1,8 +1,6 @@
 module bottino.bots;
-public import bottino.bots.logger;
-public import bottino.bots.echo;
-public import bottino.bots.help;
 import bottino.ircgrammar;
+import bottino.irc;
 
 import vibe.core.core;
 import vibe.core.concurrency : send, receiveOnly;
@@ -20,60 +18,22 @@ import std.conv : to;
 /* Handle registered bot commands                                          */
 /* ----------------------------------------------------------------------- */
 
-BotCommands COMMANDS;
-
-static this()
+Bot[] makeBots(ref IrcClient irc, const BotConfig config)
 {
-    COMMANDS["echoBot"] = ["echo", "Always in agreement with you"];
-    COMMANDS["stopBot"] = ["stop", "You can(not) stop me"];
-    COMMANDS["helpBot"] = ["help", "This help"];
+    import bottino.bots.logger;
+    import bottino.bots.echo;
+    import bottino.bots.nickserv;
+    import bottino.bots.help;
+
+    Bot[] bots;
+
+    bots ~= createEchoBot("echoerino", config, irc);
+    bots ~= createNickServBot("nickerino", config, irc);
+    bots ~= createHelpBot("helperino", config, bots, irc);
+    bots ~= createLoggerBot("loggerino", config, "./logs");
+
+    return bots;
 }
-
-struct BotCommands
-{
-    private string[string] commands;
-    private string[string] descriptions;
-
-    void opIndexAssign(string[] valDesc, string key) @safe nothrow
-    {
-        assert(valDesc.length == 2, "Invalid command description");
-
-        string val = valDesc[0];
-        assert(val.length < 16,
-               "Command must be less than 16 characters long.");
-        if(val.startsWith(PREFIX)) commands[key] = val;
-        else commands[key] = PREFIX ~ val;
-
-        descriptions[key] = valDesc[1];
-    }
-
-    string opIndex(string key) @safe nothrow
-    {
-        if(key in commands)
-            return commands[key];
-        else
-            return PREFIX ~ "not_a_command";
-    }
-
-    string describe(string key) @safe nothrow
-    {
-        if(key in commands && key in descriptions)
-            return descriptions[key];
-        else
-            return PREFIX ~ "not_a_command";
-    }
-
-    auto byKey() @safe
-    {
-        return commands.byKey.array;
-    }
-
-    auto byValue() @safe
-    {
-        return commands.byValue.array;
-    }
-}
-
 /* ----------------------------------------------------------------------- */
 /* Actions are the work done by a bot on every line                        */
 /* ----------------------------------------------------------------------- */
@@ -133,12 +93,16 @@ struct Bot
     }
 
     immutable string name;
+    immutable string command;
+    immutable string helpText;
     immutable BotConfig config;
     BotAction work;
 
-    this(immutable string n, BotConfig c, BotAction act) @safe
+    this(immutable string n, immutable string cmd, immutable string help, BotConfig c, BotAction act) @safe
     {
         name = n;
+        helpText = help;
+        command = cmd;
         config = c;
         work = act;
     }
@@ -211,11 +175,12 @@ struct Bot
                 while(state == BotState.AWAKE) {
                     auto line = receiveOnly!string();
 
-                    if(IRCCommand(line).command == COMMANDS["stopBot"]) {
-                        logInfo("[BOT "~name~"] Going to sleep");
-                        sleep();
-                        break;
-                    }
+                    /// not working
+                    // if(IRCCommand(line).command == COMMANDS["stopBot"]) {
+                    //     logInfo("[BOT "~name~"] Going to sleep");
+                    //     sleep();
+                    //     break;
+                    // }
 
                     bool ok = work(config, line);
                     if(!ok) {

@@ -13,11 +13,13 @@ import vibe.core.log;
 
 /* ----------------------------------------------------------------------- */
 
+immutable command = "auth";
+
 Bot createNickServBot(immutable string name,
                       immutable BotConfig config,
                       ref IrcClient irc) @safe
 {
-    return Bot(name, config, asBotAction!(nickservWork!irc));
+    return Bot(name, command, "spiega commando auth", config, asBotAction!(nickservWork!irc));
 }
 
 /* ----------------------------------------------------------------------- */
@@ -25,7 +27,7 @@ Bot createNickServBot(immutable string name,
 bool nickservWork(alias IRC)(BotConfig config, string line) @safe nothrow
 {
     auto cmd = IRCCommand(line);
-    if(cmd.valid && cmd.command == COMMANDS["echoBot"]) {
+    if(cmd.valid && cmd.command == command) {
         try {
             import std.stdio;
             writeln(cmd.replyTarget(config.nick));
