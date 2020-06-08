@@ -103,7 +103,7 @@ struct IrcClient
             string line = front();
             string pong = tryPong(line);
             if(!pong.empty) {
-                logInfo("[PING] Sending PONG");
+                // logInfo("[PING] Sending PONG");
                 sendRaw(pong);
             } else {
 
