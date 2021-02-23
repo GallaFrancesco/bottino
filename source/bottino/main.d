@@ -29,10 +29,9 @@ Bot[] makeBots(ref IrcClient irc, const BotConfig config)
     Bot[] bots;
 
     bots ~= createEchoBot("echoerino", config, irc);
-    bots ~= createRaverBot("raverino", config, irc);
     bots ~= createNickServBot("nickerino", config, irc);
     bots ~= createHelpBot("helperino", config, bots, irc);
-    // bots ~= createLoggerBot("loggerino", config, "./logs");
+    bots ~= createLoggerBot("loggerino", config, "./logs");
 
     return bots;
 }
